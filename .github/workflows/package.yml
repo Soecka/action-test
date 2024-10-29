@@ -1,0 +1,64 @@
+name: CI & CD
+on:
+    push:
+        branches:
+            - main
+jobs:
+    Build-and-Publish:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            id-token: write
+        steps:
+            - uses: actions/checkout@v4
+            - name: get content
+              id: package-json
+              env:
+                  REPOSITORY: ${{ github.repository }}
+                  HOME_PAGE: ${{github.repositoryUrl}}
+                  TOPICS: idea2app,github
+                  DESCRIPTION: idea2app
+
+              run: |
+                  content=`cat ./package.json`
+                  content="${content//'%'/'%25'}"
+                  content="${content//$'\n'/'%0A'}"
+                  content="${content//$'\r'/'%0D'}"
+                  echo "::set-output name=json::$content"
+
+            - name: set content
+              run: |
+                  echo "DESCRIPTION=${{fromJson(steps.package-json.outputs.json).description}}" >> $GITHUB_ENV
+                  echo "HOME_PAGE=${{fromJson(steps.package-json.outputs.json).homepage }}" >> $GITHUB_ENV
+                  echo "${{toJson(steps.package-json.outputs.json)}}"
+                  topicraw="${{toJson(fromJson(steps.package-json.outputs.json).keywords)}}"
+                  topics=$(echo $topicraw | tr -d '\n' | tr -d ' ' | sed 's/\",\s*\"/,/g' | sed 's/"//g' | sed 's/\[\(.*\)\]/\1/' | tr '[:upper:]' '[:lower:]')
+                  echo $topics
+                  echo "TOPICS=${topics}" >> $GITHUB_ENV
+                  echo "$TOPICS@L"
+
+            - name: edit description
+              if: ${{env.DESCRIPTION}}
+              run: |
+                  gh repo edit "$REPOSITORY" --description "$DESCRIPTION"
+              env:
+                  GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+                  REPOSITORY: ${{ github.repository }}
+
+            - name: edit homepage
+              if: ${{env.HOME_PAGE}}
+              run: |
+                  gh repo edit "$REPOSITORY" --homepage "$HOME_PAGE"
+              env:
+                  GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+                  REPOSITORY: ${{ github.repository }}
+
+            - name: edit topics
+              if: ${{env.TOPICS}}
+              run: |
+                  gh api --method PUT "repos/$REPOSITORY/topics" -f "names[]" 
+                  echo "${TOPICS@L}"
+                  gh repo edit "$REPOSITORY" --add-topic "${TOPICS@L}"
+              env:
+                  GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+                  REPOSITORY: ${{ github.repository }}
