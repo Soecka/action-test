@@ -18,7 +18,6 @@ jobs:
               with:
                   node-version: 20
               env:
-                  REPOSITORY: ${{ github.repository }}
                   HOME_PAGE: ${{github.repositoryUrl}}
                   TOPICS: idea2app,github
                   DESCRIPTION: idea2app
@@ -32,31 +31,15 @@ jobs:
                   echo "HOME_PAGE=$HOME_PAGE" >> $GITHUB_ENV
                   echo "TOPICS=$TOPICS" >> $GITHUB_ENV
 
-            - name: edit description
-              if: ${{env.DESCRIPTION}}
+            - name: edit repo info
               run: |
-                  gh repo edit "$REPOSITORY" --description "$DESCRIPTION"
+                  [[ "$DESCRIPTION" ]] && gh repo edit "$REPOSITORY" --description "$DESCRIPTION"
+                  [[ "$HOME_PAGE" ]] && gh repo edit "$REPOSITORY" --homepage "$HOME_PAGE"
+                  [[ "$TOPICS" ]] && {
+                    gh api --method PUT "repos/$REPOSITORY/topics" -f "names[]"
+                    gh repo edit "$REPOSITORY" --add-topic "$TOPICS"
+                  }
               env:
-                  # "Administration" repository permissions (write)
-                  GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-                  REPOSITORY: ${{ github.repository }}
-
-            - name: edit homepage
-              if: ${{env.HOME_PAGE}}
-              run: |
-                  gh repo edit "$REPOSITORY" --homepage "$HOME_PAGE"
-              env:
-                  # "Administration" repository permissions (write)
-                  GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-                  REPOSITORY: ${{ github.repository }}
-
-            - name: edit topics
-              if: ${{env.TOPICS}}
-              run: |
-                  gh api --method PUT "repos/$REPOSITORY/topics" -f "names[]" 
-                  echo "${TOPICS@L}"
-                  gh repo edit "$REPOSITORY" --add-topic "$TOPICS"
-              env:
-                  # "Administration" repository permissions (write)
+                  # "Administration" repository permissions (write), https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28#replace-all-repository-topics
                   GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
                   REPOSITORY: ${{ github.repository }}

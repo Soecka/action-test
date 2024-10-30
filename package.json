@@ -2,13 +2,14 @@
   "name": "action-test",
   "version": "1.0.0",
   "author": "twcbnubio@gmail.com",
-  "description": "For testing github actions",
+  "description": "Somewhere testing github actions",
   "homepage": "https://github.com/idea2app/action-test",
   "license": "ISC",
   "keywords": [
     "idea2app",
     "action",
-    "test"
+    "test",
+    "package"
   ],
   "main": "index.js",
   "scripts": {
