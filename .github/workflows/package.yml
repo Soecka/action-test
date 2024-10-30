@@ -3,6 +3,8 @@ on:
     push:
         branches:
             - main
+        paths:
+            - package.json
 jobs:
     Build-and-Publish:
         runs-on: ubuntu-latest
@@ -11,31 +13,24 @@ jobs:
             id-token: write
         steps:
             - uses: actions/checkout@v4
-            - name: get content
-              id: package-json
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
               env:
                   REPOSITORY: ${{ github.repository }}
                   HOME_PAGE: ${{github.repositoryUrl}}
                   TOPICS: idea2app,github
                   DESCRIPTION: idea2app
 
+            - name: get content
               run: |
-                  content=`cat ./package.json`
-                  content="${content//'%'/'%25'}"
-                  content="${content//$'\n'/'%0A'}"
-                  content="${content//$'\r'/'%0D'}"
-                  echo "::set-output name=json::$content"
-
-            - name: set content
-              run: |
-                  echo "DESCRIPTION=${{fromJson(steps.package-json.outputs.json).description}}" >> $GITHUB_ENV
-                  echo "HOME_PAGE=${{fromJson(steps.package-json.outputs.json).homepage }}" >> $GITHUB_ENV
-                  echo "${{toJson(steps.package-json.outputs.json)}}"
-                  topicraw="${{toJson(fromJson(steps.package-json.outputs.json).keywords)}}"
-                  topics=$(echo $topicraw | tr -d '\n' | tr -d ' ' | sed 's/\",\s*\"/,/g' | sed 's/"//g' | sed 's/\[\(.*\)\]/\1/' | tr '[:upper:]' '[:lower:]')
-                  echo $topics
-                  echo "TOPICS=${topics}" >> $GITHUB_ENV
-                  echo "$TOPICS@L"
+                  DESCRIPTION=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).description || ''")
+                  HOME_PAGE=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).homepage || ''")
+                  TOPICS=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).keywords?.join(',').toLowerCase() || ''")
+                  echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_ENV
+                  echo "HOME_PAGE=$HOME_PAGE" >> $GITHUB_ENV
+                  echo "TOPICS=$TOPICS" >> $GITHUB_ENV
 
             - name: edit description
               if: ${{env.DESCRIPTION}}
@@ -58,7 +53,7 @@ jobs:
               run: |
                   gh api --method PUT "repos/$REPOSITORY/topics" -f "names[]" 
                   echo "${TOPICS@L}"
-                  gh repo edit "$REPOSITORY" --add-topic "${TOPICS@L}"
+                  gh repo edit "$REPOSITORY" --add-topic "$TOPICS"
               env:
                   GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
                   REPOSITORY: ${{ github.repository }}
