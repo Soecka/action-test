@@ -19,20 +19,14 @@ jobs:
                   node-version: 20
               env:
                   HOME_PAGE: ${{github.repositoryUrl}}
-                  TOPICS: idea2app,github
-                  DESCRIPTION: idea2app
+                  TOPICS: idea2app,agile,devops,cloud,it-transformation,efficient,github,open-source,automation
+                  DESCRIPTION: Industry-wide IT transformation expert
 
             - name: get content
               run: |
                   DESCRIPTION=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).description || ''")
                   HOME_PAGE=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).homepage || ''")
                   TOPICS=$(node -p "JSON.parse(require('fs').readFileSync('package.json')).keywords?.join(',').toLowerCase() || ''")
-                  echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_ENV
-                  echo "HOME_PAGE=$HOME_PAGE" >> $GITHUB_ENV
-                  echo "TOPICS=$TOPICS" >> $GITHUB_ENV
-
-            - name: edit repo info
-              run: |
                   [[ "$DESCRIPTION" ]] && gh repo edit "$REPOSITORY" --description "$DESCRIPTION"
                   [[ "$HOME_PAGE" ]] && gh repo edit "$REPOSITORY" --homepage "$HOME_PAGE"
                   [[ "$TOPICS" ]] && {
